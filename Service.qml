@@ -37,9 +37,15 @@ Item {
 
   // Hushed windows: "0x..." address -> { class, title, level }. level indexes
   // into `levels`. The peeked window is still hushed; it is just temporarily
-  // shown while it holds focus.
+  // shown while it holds focus or the pointer.
   property var hushed: ({})
   property string peeking: ""
+  // Focus alone can't end a peek: moving the pointer onto wallpaper, a bar, or
+  // a dock strip leaves the window focused, so nothing would ever re-fade it.
+  // While peeking, poll the cursor and end the peek when it leaves the window.
+  // cursorSeen guards keyboard-driven peeks: only a cursor that actually
+  // visited the window can end the peek by leaving it.
+  property bool cursorSeen: false
   readonly property int count: Object.keys(hushed).length
 
   function applySettings(raw) {
@@ -135,6 +141,37 @@ Item {
     save()
   }
 
+  function startPeek(addr) {
+    peeking = addr
+    cursorSeen = false
+    setOpacity(addr, 1)
+  }
+
+  function endPeek() {
+    if (peeking !== "" && (peeking in hushed))
+      setOpacity(peeking, levelOpacity(hushed[peeking].level))
+    peeking = ""
+    cursorSeen = false
+  }
+
+  function peekTick(raw) {
+    if (peeking === "") return
+    var lines = String(raw || "").trim().split("\n")
+    if (lines.length < 2) return
+    var m = lines[0].match(/(-?\d+),\s*(-?\d+)/)
+    if (!m) return
+    var cx = parseInt(m[1], 10)
+    var cy = parseInt(m[2], 10)
+    var rect
+    try { rect = JSON.parse(lines[lines.length - 1]) } catch (err) { return }
+    // Window gone or not reported: leave cleanup to the closewindow event.
+    if (!rect || !Array.isArray(rect.at) || !Array.isArray(rect.size)) return
+    var inside = cx >= rect.at[0] && cx < rect.at[0] + rect.size[0]
+              && cy >= rect.at[1] && cy < rect.at[1] + rect.size[1]
+    if (inside) cursorSeen = true
+    else if (cursorSeen) endPeek()
+  }
+
   // Re-assert every hushed window's opacity (settings change, config reload).
   // The peeked window is deliberately left visible.
   function reapply() {
@@ -149,19 +186,24 @@ Item {
     try {
       var clients = JSON.parse(raw || "[]")
       var alive = {}
-      for (var i = 0; i < clients.length; i++) alive[String(clients[i].address)] = true
+      for (var i = 0; i < clients.length; i++) alive[String(clients[i].address)] = clients[i]
       var next = {}
-      var dropped = false
+      var changed = false
       for (var k in hushed) {
-        if (alive[k]) {
-          next[k] = hushed[k]
-          setOpacity(k, levelOpacity(hushed[k].level))
-        } else {
-          dropped = true
+        var c = alive[k]
+        if (!c) { changed = true; continue }
+        var e = hushed[k]
+        // Backfill class/title (entries hushed by address alone have none).
+        if (!e["class"] || !e.title) changed = true
+        next[k] = {
+          "class": String(e["class"] || c["class"] || ""),
+          "title": String(e.title || c.title || ""),
+          "level": e.level | 0
         }
+        setOpacity(k, levelOpacity(next[k].level))
       }
       hushed = next
-      if (dropped) save()
+      if (changed) save()
     } catch (err) {}
   }
 
@@ -183,13 +225,9 @@ Item {
       if (!service.peek) return
       if (name === "activewindowv2") {
         var addr = service.norm(data.split(",")[0])
-        if (service.peeking !== "" && service.peeking !== addr && (service.peeking in service.hushed))
-          service.setOpacity(service.peeking, service.levelOpacity(service.hushed[service.peeking].level))
-        if (service.peeking !== addr) service.peeking = ""
-        if (addr !== "" && (addr in service.hushed)) {
-          service.peeking = addr
-          service.setOpacity(addr, 1)
-        }
+        if (addr === service.peeking) return
+        service.endPeek()
+        if (addr !== "" && (addr in service.hushed)) service.startPeek(addr)
       }
     }
   }
@@ -211,6 +249,26 @@ Item {
     id: clientsProc
     command: ["hyprctl", "clients", "-j"]
     stdout: StdioCollector { onStreamFinished: service.reconcile(text) }
+  }
+
+  // Only runs while a window is peeked; stops itself the moment the peek ends.
+  Timer {
+    id: peekTimer
+    interval: 250
+    repeat: true
+    running: service.peeking !== ""
+    onTriggered: {
+      if (peekProbe.running) return
+      peekProbe.command = ["bash", "-c",
+        "hyprctl cursorpos; hyprctl clients -j | jq -c --arg a \"$1\" '[.[] | select(.address == $a)][0] | {at, size}'",
+        "hush", service.peeking]
+      peekProbe.running = true
+    }
+  }
+
+  Process {
+    id: peekProbe
+    stdout: StdioCollector { onStreamFinished: service.peekTick(text) }
   }
 
   FileView {

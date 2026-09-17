@@ -31,9 +31,10 @@ o.bind("SUPER + H", "Hush window", "omarchy-shell io.github.kring-ventures.hush 
 
 - **Hush key** — cycles the focused window: normal → 50% → 10% → normal.
 - **Focus a hushed window** (click into it, or hover if your `follow_mouse`
-  focuses on hover) — it *peeks*: fully visible while it has focus, fades
-  again when focus leaves. Hushed windows still receive input, so a blanked
-  window is still clickable right where it always was.
+  focuses on hover) — it *peeks*: fully visible until the pointer leaves the
+  window or focus moves elsewhere, then it fades again. Hushed windows still
+  receive input, so a blanked window is still clickable right where it always
+  was.
 - **Bar widget** — shows an eye-slash and how many windows are hushed
   (hidden when none are). The tooltip lists them; a click restores them all.
 

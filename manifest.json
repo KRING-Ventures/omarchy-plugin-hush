@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "io.github.kring-ventures.hush",
   "name": "Hush",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "author": "KRING Ventures",
   "license": "MIT",
   "description": "Blank a window in place. It keeps its tile, nothing reflows, and one key (or a click) brings it back.",
