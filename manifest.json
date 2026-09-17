@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "io.github.kring-ventures.hush",
+  "name": "Hush",
+  "version": "0.1.0",
+  "author": "KRING Ventures",
+  "license": "MIT",
+  "description": "Blank a window in place. It keeps its tile, nothing reflows, and one key (or a click) brings it back.",
+  "kinds": ["service", "bar-widget"],
+  "entryPoints": {
+    "service": "Service.qml",
+    "barWidget": "Hush.qml"
+  },
+  "barWidget": {
+    "displayName": "Hush",
+    "description": "How many windows are hushed; click to restore them all",
+    "category": "System",
+    "allowMultiple": false,
+    "defaultSection": "right"
+  }
+}
