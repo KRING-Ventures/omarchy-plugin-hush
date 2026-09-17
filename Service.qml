@@ -85,10 +85,15 @@ Item {
     return levels[i]
   }
 
+  // Set both opacity props: `opacity` only applies while the window is
+  // active, so setting it alone fades the window while it is focused and
+  // reverts the moment focus leaves — exactly backwards.
   function setOpacity(addr, value) {
     if (!safeAddr(addr)) return
-    Quickshell.execDetached(["hyprctl", "dispatch",
-      "hl.dsp.window.set_prop({ window = 'address:" + addr + "', prop = 'opacity', value = " + value + " })"])
+    var w = "address:" + addr
+    Quickshell.execDetached(["hyprctl", "--batch",
+      "dispatch hl.dsp.window.set_prop({ window = '" + w + "', prop = 'opacity', value = " + value + " }) ; " +
+      "dispatch hl.dsp.window.set_prop({ window = '" + w + "', prop = 'opacity_inactive', value = " + value + " })"])
   }
 
   function save() { stateFile.setText(JSON.stringify(hushed, null, 2) + "\n") }
