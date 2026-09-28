@@ -2,11 +2,14 @@
   "schemaVersion": 1,
   "id": "io.github.kring-ventures.hush",
   "name": "Hush",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "author": "KRING Ventures",
   "license": "MIT",
-  "description": "Blank a window in place. It keeps its tile, nothing reflows, and one key (or a click) brings it back.",
-  "kinds": ["service", "bar-widget"],
+  "description": "Fade a window in place without reflowing anything, and let it wake up when it gets new messages.",
+  "kinds": [
+    "service",
+    "bar-widget"
+  ],
   "entryPoints": {
     "service": "Service.qml",
     "barWidget": "Hush.qml"
